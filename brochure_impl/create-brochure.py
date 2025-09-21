@@ -5,6 +5,7 @@ import requests
 from dotenv import load_dotenv
 from bs4 import BeautifulSoup
 from openai import OpenAI
+import gradio as gr
 
 load_dotenv(override=True)
 
@@ -104,7 +105,7 @@ def get_all_details(url):
     result = "Landing page:\n"
     result += Website(url).get_contents()
     links = get_useful_links(url)
-    print("Found links:", links)
+    # print("Found links:", links)
     for link in links["links"]:
         result += f"\n\n{link['type']}\n"
         result += Website(link["url"]).get_contents()
@@ -133,23 +134,23 @@ def create_brochure(company_name, url):
         )
 
         response = ""
-        print("\n--- 📄 Brochure Output ---\n")
         for chunk in stream:
-            content = chunk.choices[0].delta.content or ''
-            response += content
-            print(content, end="", flush=True)  # stream to CLI in real-time
+            content = chunk.choices[0].delta.content
+            if content:
+                response += content
+                yield response
 
-        print("\n\n✅ Done generating brochure.")
-        return response
-# Main entry point
-def main():
-    parser = argparse.ArgumentParser(description="Brochure Generation using OpenAI")
-    parser.add_argument("--company_name", required=True, help="Name of the company to use")
-    parser.add_argument("--url", required=True, help="URL of the webpage to generate brochure for")
 
-    args = parser.parse_args()
+with gr.Blocks() as demo:
+    gr.Markdown("## 📄 Company Brochure Generator")
 
-    brochure = create_brochure(args.company_name, args.url)
+    with gr.Row():
+        url_input = gr.Textbox(label="Enter Website URL")
+        company_input = gr.Textbox(label="Enter Company Name")
 
-if __name__ == "__main__":
-    main()
+    output = gr.Markdown(label="Generated Brochure")
+
+    generate_btn = gr.Button("Generate Brochure")
+    generate_btn.click(fn=create_brochure, inputs=[company_input, url_input], outputs=output, queue = True)
+
+demo.launch()
